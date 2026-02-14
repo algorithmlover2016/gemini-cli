@@ -341,3 +341,35 @@ flowchart LR
    - 如果 core 还没编译（没有 `dist/` 目录），sdk 的编译会因为找不到类型声明而失败
 
 **总结**：`references` 解决的是**编译时**的依赖和类型解析问题，`dependencies` 解决的是**运行时**的模块查找问题。在 TypeScript monorepo 项目中，两者需要同时声明才能保证编译和运行都正常工作。
+
+---
+
+### Q: `tsconfig.json` 中 `src/**/*.ts` 的 `**` 是否包含 `src/` 直接子文件？
+
+以 `packages/core/tsconfig.json` 为例：
+
+```json
+"include": ["index.ts", "src/**/*.ts", "src/**/*.json"]
+```
+
+**答案是：`src/**/*.ts` 匹配 `src/` 下任意深度的 `.ts` 文件，包括直接位于 `src/` 下的文件。**
+
+`**` 是 globstar 模式，匹配**零个或多个**目录层级。所以 `src/**/*.ts` 等价于匹配以下所有情况：
+
+| 模式 | 匹配的 `**` 层级 | 示例 |
+|------|------|------|
+| `src/*.ts` | 零层（直接子文件） | `src/index.ts` |
+| `src/*/*.ts` | 一层 | `src/tools/shell.ts` |
+| `src/*/*/*.ts` | 二层 | `src/tools/shell/execute.ts` |
+| `src/*/*/*/*.ts` | 三层 | `src/tools/shell/utils/parser.ts` |
+| ... | 任意层 | ... |
+
+**关键点**：`**` 匹配的是**零个或多个**目录，不是"一个或多个"。所以：
+
+- `src/**/*.ts` — ✅ 匹配 `src/foo.ts`（零层子目录）
+- `src/**/*.ts` — ✅ 匹配 `src/a/foo.ts`（一层子目录）
+- `src/**/*.ts` — ✅ 匹配 `src/a/b/c/foo.ts`（多层子目录）
+
+这与某些人的直觉不同——有人可能以为 `**` 至少匹配一层目录，但实际上它可以匹配零层，因此 `src/**/*.ts` 已经完全覆盖了 `src/*.ts` 的范围，无需额外再写 `src/*.ts`。
+
+> **注意**：`include` 中还单独列出了 `"index.ts"`，这是因为 `index.ts` 位于包的根目录（如 `packages/core/index.ts`），不在 `src/` 目录下，所以 `src/**/*.ts` 无法匹配到它，需要单独声明。
