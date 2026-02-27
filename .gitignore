@@ -61,3 +61,7 @@ gemini-debug.log
 .gemini-clipboard/
 .eslintcache
 evals/logs/
+
+# Claude Code temp files
+tmpclaude-*
+nul
